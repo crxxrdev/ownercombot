@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const settings = require('./settings');
-const { startBot, getStatus } = require('./bot');
+const { startBot, getStatus, setBotPresence } = require('./bot');
 
 const app = express();
 app.use(express.json());
@@ -24,7 +24,7 @@ app.get('/health', (req, res) => {
 });
 
 app.post('/api/settings', (req, res) => {
-  const { botEnabled, filterEnabled, adminBypass } = req.body;
+  const { botEnabled, filterEnabled, adminBypass, botPresence } = req.body;
   if (typeof botEnabled === 'boolean') {
     settings.set('botEnabled', botEnabled);
   }
@@ -33,6 +33,10 @@ app.post('/api/settings', (req, res) => {
   }
   if (typeof adminBypass === 'boolean') {
     settings.set('adminBypass', adminBypass);
+  }
+  if (typeof botPresence === 'string') {
+    settings.set('botPresence', botPresence);
+    setBotPresence(botPresence);
   }
   return res.json({ settings: settings.getSettings() });
 });
@@ -56,5 +60,9 @@ app.listen(port, async () => {
 
   const bot = await startBot();
   const status = getStatus();
+  const { botPresence } = settings.getSettings();
+  if (botPresence) {
+    setBotPresence(botPresence);
+  }
   console.log('Bot status after startup:', status);
 });

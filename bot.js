@@ -25,6 +25,7 @@ let connected = false;
 let lastError = null;
 let lastAttempt = null;
 let loginAttempts = 0;
+let desiredPresence = settings.getSettings().botPresence || 'online';
 
 const filter = new Filter();
 filter.addWords(...badwords.array);
@@ -139,6 +140,7 @@ client.once(Events.ClientReady, () => {
   connected = true;
   lastError = null;
   console.log(`Logged in as ${client.user.tag}. Moderation is active.`);
+  applyPresence(desiredPresence);
 });
 
 client.on('shardDisconnect', (event, shardId) => {
@@ -166,6 +168,7 @@ async function startBot() {
   if (client.isReady()) {
     botClient = client;
     connected = true;
+    applyPresence(desiredPresence);
     return client;
   }
 
@@ -196,7 +199,28 @@ async function startBot() {
   if (!connected) {
     console.error('Bot failed to connect after retries. Check DISCORD_TOKEN and network access.');
   }
+  if (connected && botClient && botClient.user) {
+    applyPresence(desiredPresence);
+  }
+
   return connected ? client : null;
+}
+
+function applyPresence(status) {
+  const allowedStatuses = ['online', 'idle', 'dnd'];
+  if (!allowedStatuses.includes(status)) {
+    return;
+  }
+  desiredPresence = status;
+  if (client.user && client.user.setPresence) {
+    client.user.setPresence({ activities: [{ name: 'Moderation active' }], status });
+    console.log(`Bot presence set to ${status}.`);
+  }
+}
+
+function setBotPresence(status) {
+  desiredPresence = status;
+  applyPresence(status);
 }
 
 function getStatus() {
@@ -209,4 +233,4 @@ function getStatus() {
   };
 }
 
-module.exports = { startBot, getStatus };
+module.exports = { startBot, getStatus, setBotPresence };

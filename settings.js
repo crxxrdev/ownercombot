@@ -5,7 +5,8 @@ const settingsFile = path.join(__dirname, 'settings.json');
 const defaultSettings = {
   botEnabled: true,
   filterEnabled: true,
-  adminBypass: true
+  adminBypass: true,
+  botPresence: 'online'
 };
 // Added: adminBypass allows admins to be exempt from moderation when true
 

@@ -1,4 +1,6 @@
 {
   "botEnabled": true,
-  "filterEnabled": true
+  "filterEnabled": true,
+  "adminBypass": true,
+  "botPresence": "online"
 }
