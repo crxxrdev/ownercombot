@@ -22,6 +22,9 @@ const client = new Client({
 
 let botClient = null;
 let connected = false;
+let lastError = null;
+let lastAttempt = null;
+let loginAttempts = 0;
 
 const filter = new Filter();
 filter.addWords(...badwords.array);
@@ -119,6 +122,7 @@ async function moderateMessage(message) {
 client.once(Events.ClientReady, () => {
   botClient = client;
   connected = true;
+  lastError = null;
   console.log(`Logged in as ${client.user.tag}. Moderation is active.`);
 });
 
@@ -143,21 +147,50 @@ async function startBot() {
     console.log('Skipping Discord bot startup because DISCORD_TOKEN is not configured.');
     return null;
   }
+
   if (client.isReady()) {
     botClient = client;
     connected = true;
     return client;
   }
-  await client.login(token);
-  botClient = client;
-  connected = true;
-  return client;
+
+  // Attempt login with retries and exponential backoff
+  const maxAttempts = 5;
+  let delayMs = 1000;
+  while (loginAttempts < maxAttempts && !connected) {
+    loginAttempts += 1;
+    lastAttempt = new Date().toISOString();
+    console.log(`Bot login attempt ${loginAttempts}/${maxAttempts}...`);
+    try {
+      await client.login(token);
+      botClient = client;
+      connected = true;
+      lastError = null;
+      console.log('Bot logged in successfully.');
+      break;
+    } catch (err) {
+      lastError = (err && err.message) ? err.message : String(err);
+      connected = false;
+      console.error(`Bot login failed (attempt ${loginAttempts}):`, lastError);
+      if (loginAttempts >= maxAttempts) break;
+      await new Promise(r => setTimeout(r, delayMs));
+      delayMs *= 2;
+    }
+  }
+
+  if (!connected) {
+    console.error('Bot failed to connect after retries. Check DISCORD_TOKEN and network access.');
+  }
+  return connected ? client : null;
 }
 
 function getStatus() {
   return {
     connected,
-    user: botClient?.user ? `${botClient.user.tag}` : null
+    user: botClient?.user ? `${botClient.user.tag}` : null,
+    lastError,
+    lastAttempt,
+    loginAttempts
   };
 }
 
