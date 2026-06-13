@@ -41,5 +41,16 @@ app.get('*', (req, res) => {
 const port = parseInt(process.env.PORT, 10) || 3000;
 app.listen(port, async () => {
   console.log(`Dashboard available at http://localhost:${port}`);
-  await startBot();
+
+  const token = process.env.DISCORD_TOKEN;
+  if (token) {
+    const masked = token.length > 8 ? `${token.slice(0,4)}...${token.slice(-4)}` : '***';
+    console.log(`DISCORD_TOKEN present (masked): ${masked}`);
+  } else {
+    console.warn('DISCORD_TOKEN is not set. The bot will not connect until you set this environment variable.');
+  }
+
+  const bot = await startBot();
+  const status = getStatus();
+  console.log('Bot status after startup:', status);
 });
