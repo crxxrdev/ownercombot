@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Client, GatewayIntentBits, Events } = require('discord.js');
+const { Client, GatewayIntentBits, Events, PermissionsBitField } = require('discord.js');
 const Filter = require('bad-words');
 const badwords = require('badwords-list');
 const settings = require('./settings');
@@ -117,6 +117,11 @@ function shouldDeleteMessage(message) {
 }
 
 async function moderateMessage(message) {
+  // Allow server administrators to bypass moderation
+  if (message.member?.permissions?.has && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return;
+  }
+
   if (shouldDeleteMessage(message)) {
     try {
       await message.delete();
