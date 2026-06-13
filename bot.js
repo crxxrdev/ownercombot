@@ -49,6 +49,13 @@ if (customWords.length > 0) {
 
 const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.mp4', '.mov', '.webm'];
 
+const inviteRegex = /(?:https?:\/\/)?(?:www\.)?(?:discord(?:app)?\.com\/invite|discord\.gg)\/[A-Za-z0-9-]+/i;
+
+function containsInvite(text) {
+  if (!text) return false;
+  return inviteRegex.test(text);
+}
+
 async function scanImageUrl(imageUrl) {
   const apiUrl = process.env.IMAGE_MODERATION_API_URL;
   const apiKey = process.env.IMAGE_MODERATION_API_KEY;
@@ -74,6 +81,7 @@ async function scanImageUrl(imageUrl) {
 function hasBlockedContent(text) {
   if (!text) return false;
   if (filter.isProfane(text)) return true;
+  if (containsInvite(text)) return true;
   return imageExtensions.some(ext => text.toLowerCase().includes(ext));
 }
 
@@ -93,6 +101,7 @@ async function hasImageOrAttachment(message) {
   }
   if (message.content) {
     const text = message.content.toLowerCase();
+    if (containsInvite(message.content)) return true;
     return imageExtensions.some(ext => text.includes(ext));
   }
   return false;
