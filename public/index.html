@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OwnerComBot Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <h1>OwnerComBot Dashboard</h1>
+    <section class="status-card">
+      <div>
+        <strong>Bot status:</strong>
+        <span id="bot-state">Loading…</span>
+      </div>
+      <div>
+        <strong>Filter status:</strong>
+        <span id="filter-state">Loading…</span>
+      </div>
+      <div>
+        <strong>Uptime:</strong>
+        <span id="uptime">Loading…</span>
+      </div>
+    </section>
+
+    <section class="controls-card">
+      <label>
+        <input type="checkbox" id="bot-toggle">
+        Enable bot
+      </label>
+      <label>
+        <input type="checkbox" id="filter-toggle">
+        Enable filtering
+      </label>
+      <button id="save-button">Save settings</button>
+      <div id="message"></div>
+    </section>
+
+    <section class="info-card">
+      <p>Use this dashboard to turn the moderation bot and filtering on or off. The bot must be running in the same app for changes to take effect.</p>
+    </section>
+  </main>
+  <script src="/script.js"></script>
+</body>
+</html>
