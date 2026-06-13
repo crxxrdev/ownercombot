@@ -36,15 +36,16 @@ A Discord moderation bot with a web dashboard for toggling the bot and filtering
 
 Run `npm start` to host both the website and the bot together.
 
-### Vercel deployment
+### Railway deployment
 
-This project includes a deployable dashboard in `public/`. Vercel can serve the website, but Discord bots require a long-running process, so the actual bot connection should run on a host that supports persistent Node.js processes.
+Railway works well for Node.js apps and can host the bot process.
 
-If you want to deploy the website to Vercel:
+1. Add this repository to Railway.
+2. Set `DISCORD_TOKEN` in Railway Environment Variables.
+3. Set the `Start Command` to `npm start` if Railway does not auto-detect it.
+4. Deploy the project.
 
-1. Add this repository to Vercel.
-2. Use the default static deployment settings.
-3. Set `DISCORD_TOKEN` in Vercel environment variables if you later add a backend host.
+Railway will use `PORT` from the environment when starting your app.
 
 ## How it works
 
