@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const settings = require('./settings');
-const { startBot } = require('./bot');
+const { startBot, getStatus } = require('./bot');
 
 const app = express();
 app.use(express.json());
@@ -12,6 +12,14 @@ app.get('/api/status', (req, res) => {
   res.json({
     settings: settings.getSettings(),
     uptimeSeconds: Math.floor(process.uptime())
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.json({
+    settings: settings.getSettings(),
+    uptimeSeconds: Math.floor(process.uptime()),
+    bot: getStatus()
   });
 });
 

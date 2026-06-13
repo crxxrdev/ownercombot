@@ -20,6 +20,9 @@ const client = new Client({
   ]
 });
 
+let botClient = null;
+let connected = false;
+
 const filter = new Filter();
 filter.addWords(...badwords.array);
 
@@ -114,7 +117,19 @@ async function moderateMessage(message) {
 }
 
 client.once(Events.ClientReady, () => {
+  botClient = client;
+  connected = true;
   console.log(`Logged in as ${client.user.tag}. Moderation is active.`);
+});
+
+client.on('shardDisconnect', (event, shardId) => {
+  connected = false;
+  console.warn('Bot shard disconnected', { shardId, event });
+});
+
+client.on('error', (err) => {
+  connected = false;
+  console.error('Discord client error:', err);
 });
 
 client.on(Events.MessageCreate, moderateMessage);
@@ -129,10 +144,21 @@ async function startBot() {
     return null;
   }
   if (client.isReady()) {
+    botClient = client;
+    connected = true;
     return client;
   }
   await client.login(token);
+  botClient = client;
+  connected = true;
   return client;
 }
 
-module.exports = { startBot };
+function getStatus() {
+  return {
+    connected,
+    user: botClient?.user ? `${botClient.user.tag}` : null
+  };
+}
+
+module.exports = { startBot, getStatus };
