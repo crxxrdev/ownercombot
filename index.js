@@ -24,15 +24,19 @@ app.get('/health', (req, res) => {
 });
 
 app.post('/api/settings', (req, res) => {
-  const { botEnabled, filterEnabled } = req.body;
+  const { botEnabled, filterEnabled, adminBypass } = req.body;
   if (typeof botEnabled === 'boolean') {
     settings.set('botEnabled', botEnabled);
   }
   if (typeof filterEnabled === 'boolean') {
     settings.set('filterEnabled', filterEnabled);
   }
+  if (typeof adminBypass === 'boolean') {
+    settings.set('adminBypass', adminBypass);
+  }
   return res.json({ settings: settings.getSettings() });
 });
+
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

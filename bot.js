@@ -117,8 +117,9 @@ function shouldDeleteMessage(message) {
 }
 
 async function moderateMessage(message) {
-  // Allow server administrators to bypass moderation
-  if (message.member?.permissions?.has && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+  // Allow server administrators to bypass moderation if configured
+  const { adminBypass } = settings.getSettings();
+  if (adminBypass && message.member?.permissions?.has && message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
     return;
   }
 

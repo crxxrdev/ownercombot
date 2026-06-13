@@ -3,6 +3,7 @@ const filterState = document.getElementById('filter-state');
 const uptime = document.getElementById('uptime');
 const botToggle = document.getElementById('bot-toggle');
 const filterToggle = document.getElementById('filter-toggle');
+const adminToggle = document.getElementById('admin-toggle');
 const saveButton = document.getElementById('save-button');
 const messageEl = document.getElementById('message');
 
@@ -15,6 +16,7 @@ async function fetchStatus() {
     uptime.textContent = `${data.uptimeSeconds} seconds`;
     botToggle.checked = data.settings.botEnabled;
     filterToggle.checked = data.settings.filterEnabled;
+    if (adminToggle) adminToggle.checked = data.settings.adminBypass;
   } catch (error) {
     botState.textContent = 'Offline';
     filterState.textContent = 'Offline';
@@ -34,11 +36,13 @@ async function saveSettings() {
       body: JSON.stringify({
         botEnabled: botToggle.checked,
         filterEnabled: filterToggle.checked
+          ,adminBypass: adminToggle ? adminToggle.checked : false
       })
     });
     const data = await response.json();
     botState.textContent = data.settings.botEnabled ? 'Enabled' : 'Disabled';
     filterState.textContent = data.settings.filterEnabled ? 'Enabled' : 'Disabled';
+      if (adminToggle) adminToggle.checked = data.settings.adminBypass;
     messageEl.textContent = 'Settings saved.';
   } catch (error) {
     messageEl.textContent = 'Failed to save settings.';
