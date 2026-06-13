@@ -6,9 +6,10 @@ const badwords = require('badwords-list');
 const settings = require('./settings');
 
 const token = process.env.DISCORD_TOKEN;
+let hasToken = true;
 if (!token) {
-  console.error('Missing DISCORD_TOKEN in .env or environment.');
-  process.exit(1);
+  console.warn('DISCORD_TOKEN not set; bot will not connect. Dashboard and API will remain available.');
+  hasToken = false;
 }
 
 const client = new Client({
@@ -123,6 +124,10 @@ client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
 });
 
 async function startBot() {
+  if (!hasToken) {
+    console.log('Skipping Discord bot startup because DISCORD_TOKEN is not configured.');
+    return null;
+  }
   if (client.isReady()) {
     return client;
   }
