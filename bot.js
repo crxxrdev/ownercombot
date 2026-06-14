@@ -342,7 +342,7 @@ async function startBot() {
   return connected ? client : null;
 }
 
-function applyPresence(status) {
+async function applyPresence(status) {
   const allowedStatuses = ['online', 'idle', 'dnd'];
   if (!allowedStatuses.includes(status)) {
     console.warn(`Invalid presence status: ${status}`);
@@ -350,9 +350,15 @@ function applyPresence(status) {
   }
   desiredPresence = status;
   if (client.user && client.user.setPresence) {
-    client.user.setPresence({ activities: [{ name: 'Moderation active' }], status })
-      .then(() => console.log(`Bot presence set to ${status}.`))
-      .catch(err => console.error('Failed to set bot presence:', err));
+    try {
+      const result = client.user.setPresence({ activities: [{ name: 'Moderation active' }], status });
+      if (result && typeof result.then === 'function') {
+        await result;
+      }
+      console.log(`Bot presence set to ${status}.`);
+    } catch (err) {
+      console.error('Failed to set bot presence:', err);
+    }
   } else {
     console.warn('Bot client is not ready to set presence yet. Desired presence saved for later.');
   }
@@ -360,7 +366,7 @@ function applyPresence(status) {
 
 function setBotPresence(status) {
   desiredPresence = status;
-  applyPresence(status);
+  applyPresence(status).catch(err => console.error('Failed to apply presence from settings call:', err));
 }
 
 async function getDmUsers() {
