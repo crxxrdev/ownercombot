@@ -53,6 +53,34 @@
       <div id="message"></div>
     </section>
 
+    <section class="servers-card">
+      <h2>Servers</h2>
+      <div id="server-list" class="list-box">Loading servers…</div>
+    </section>
+
+    <section class="members-card">
+      <h2>Server members</h2>
+      <div id="member-list" class="list-box">Select a server to view members.</div>
+    </section>
+
+    <section class="dm-card">
+      <h2>Direct messages</h2>
+      <div id="dm-users-list" class="list-box">Loading DM contacts…</div>
+      <div class="dm-panel">
+        <div id="dm-user-title">Select a user to view chat.</div>
+        <div class="dm-tabs">
+          <button id="dm-tab-history" class="tab-button active">History</button>
+          <button id="dm-tab-live" class="tab-button">Live preview</button>
+          <span id="dm-live-indicator" class="live-indicator">Paused</span>
+        </div>
+        <div id="dm-history-list" class="chat-box">No conversation selected.</div>
+        <div class="dm-compose">
+          <textarea id="dm-message-input" rows="3" placeholder="Write a message..."></textarea>
+          <button id="send-dm-button" disabled>Send DM</button>
+        </div>
+      </div>
+    </section>
+
     <section class="info-card">
       <p>Use this dashboard to turn the moderation bot and filtering on or off. The bot must be running in the same app for changes to take effect.</p>
     </section>
