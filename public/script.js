@@ -42,6 +42,9 @@ async function fetchStatus() {
     if (presenceSelect && data.settings.botPresence) {
       presenceSelect.value = data.settings.botPresence;
     }
+    if (!botConnected) {
+      messageEl.textContent = 'Bot is not connected. Check your token or deployment logs.';
+    }
   } catch (error) {
     botState.textContent = 'Offline';
     filterState.textContent = 'Offline';
@@ -367,8 +370,8 @@ async function saveSettings() {
 sendDmButton.addEventListener('click', sendDm);
 dmTabHistory.addEventListener('click', () => setDmViewMode('history'));
 dmTabLive.addEventListener('click', () => setDmViewMode('live'));
-window.addEventListener('DOMContentLoaded', () => {
-  fetchStatus();
+window.addEventListener('DOMContentLoaded', async () => {
+  await fetchStatus();
   fetchGuilds();
   fetchDmUsers();
   setDmViewMode('history');
