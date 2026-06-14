@@ -1,4 +1,5 @@
 const botState = document.getElementById('bot-state');
+const botConnection = document.getElementById('bot-connection');
 const presenceState = document.getElementById('presence-state');
 const filterState = document.getElementById('filter-state');
 const uptime = document.getElementById('uptime');
@@ -33,6 +34,7 @@ async function fetchStatus() {
     const data = await response.json();
     botState.textContent = data.settings.botEnabled ? 'Enabled' : 'Disabled';
     botConnected = Boolean(data.bot?.connected);
+    botConnection.textContent = botConnected ? 'Connected' : 'Disconnected';
     presenceState.textContent = data.bot?.presence ? capitalizePresence(data.bot.presence) : (data.settings.botPresence ? capitalizePresence(data.settings.botPresence) : 'Unknown');
     filterState.textContent = data.settings.filterEnabled ? 'Enabled' : 'Disabled';
     uptime.textContent = `${data.uptimeSeconds} seconds`;
@@ -43,7 +45,7 @@ async function fetchStatus() {
       presenceSelect.value = data.settings.botPresence;
     }
     if (!botConnected) {
-      messageEl.textContent = 'Bot is not connected. Check your token or deployment logs.';
+      messageEl.textContent = data.bot?.lastError ? `Bot is not connected: ${data.bot.lastError}` : 'Bot is not connected. Check your token or deployment logs.';
     }
   } catch (error) {
     botState.textContent = 'Offline';
@@ -360,6 +362,7 @@ async function saveSettings() {
       presenceSelect.value = data.settings.botPresence;
     }
     messageEl.textContent = 'Settings saved.';
+    await fetchStatus();
   } catch (error) {
     messageEl.textContent = 'Failed to save settings.';
   } finally {
