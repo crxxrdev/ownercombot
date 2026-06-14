@@ -25,12 +25,14 @@ let selectedUserName = null;
 let dmViewMode = 'history';
 let liveInterval = null;
 const LIVE_REFRESH_MS = 3000;
+let botConnected = false;
 
 async function fetchStatus() {
   try {
     const response = await fetch('/api/status');
     const data = await response.json();
     botState.textContent = data.settings.botEnabled ? 'Enabled' : 'Disabled';
+    botConnected = Boolean(data.bot?.connected);
     presenceState.textContent = data.bot?.presence ? capitalizePresence(data.bot.presence) : (data.settings.botPresence ? capitalizePresence(data.settings.botPresence) : 'Unknown');
     filterState.textContent = data.settings.filterEnabled ? 'Enabled' : 'Disabled';
     uptime.textContent = `${data.uptimeSeconds} seconds`;
@@ -49,8 +51,17 @@ async function fetchStatus() {
 }
 
 async function fetchGuilds() {
+  if (!botConnected) {
+    serverList.textContent = 'Bot is offline or not connected to Discord.';
+    return;
+  }
   try {
     const response = await fetch('/api/guilds');
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      serverList.textContent = err.error || 'Unable to load servers.';
+      return;
+    }
     const { guilds } = await response.json();
     renderGuilds(guilds);
   } catch (error) {
@@ -60,9 +71,18 @@ async function fetchGuilds() {
 }
 
 async function fetchGuildMembers(guildId) {
+  if (!botConnected) {
+    memberList.textContent = 'Bot is offline or not connected to Discord.';
+    return;
+  }
   try {
     memberList.textContent = 'Loading members...';
     const response = await fetch(`/api/guilds/${guildId}/members`);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      memberList.textContent = err.error || 'Unable to load members.';
+      return;
+    }
     const { members } = await response.json();
     renderMembers(members);
   } catch (error) {
@@ -72,8 +92,17 @@ async function fetchGuildMembers(guildId) {
 }
 
 async function fetchDmUsers() {
+  if (!botConnected) {
+    dmUsersList.textContent = 'Bot is offline or not connected to Discord.';
+    return;
+  }
   try {
     const response = await fetch('/api/dm-users');
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      dmUsersList.textContent = err.error || 'Unable to load DM contacts.';
+      return;
+    }
     const { users } = await response.json();
     renderDmUsers(users);
   } catch (error) {
@@ -83,9 +112,18 @@ async function fetchDmUsers() {
 }
 
 async function fetchDmHistory(userId) {
+  if (!botConnected) {
+    dmHistoryList.textContent = 'Bot is offline or not connected to Discord.';
+    return;
+  }
   try {
     dmHistoryList.textContent = 'Loading chat...';
     const response = await fetch(`/api/dm-users/${userId}/history`);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      dmHistoryList.textContent = err.error || 'Unable to load chat history.';
+      return;
+    }
     const { history } = await response.json();
     renderDmHistory(history);
   } catch (error) {
