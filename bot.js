@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Client, GatewayIntentBits, Events, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, Events, PermissionsBitField, ChannelType } = require('discord.js');
 const Filter = require('bad-words');
 const badwords = require('badwords-list');
 const settings = require('./settings');
@@ -12,12 +12,20 @@ if (!token) {
   hasToken = false;
 }
 
+const initialPresence = settings.getSettings().botPresence || 'online';
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent
-  ]
+  ],
+  partials: ['CHANNEL'],
+  presence: {
+    activities: [{ name: 'Moderation active' }],
+    status: initialPresence
+  }
 });
 
 let botClient = null;
@@ -25,7 +33,7 @@ let connected = false;
 let lastError = null;
 let lastAttempt = null;
 let loginAttempts = 0;
-let desiredPresence = settings.getSettings().botPresence || 'online';
+let desiredPresence = initialPresence;
 
 const filter = new Filter();
 filter.addWords(...badwords.array);
@@ -51,6 +59,124 @@ if (customWords.length > 0) {
 const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.mp4', '.mov', '.webm'];
 
 const inviteRegex = /(?:https?:\/\/)?(?:www\.)?(?:discord(?:app)?\.com\/invite|discord\.gg)\/[A-Za-z0-9-]+/i;
+
+const dmChatsFile = path.join(__dirname, 'dm-chats.json');
+
+function loadDmChats() {
+  try {
+    const data = fs.readFileSync(dmChatsFile, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    return {};
+  }
+}
+
+function saveDmChats(chats) {
+  try {
+    fs.writeFileSync(dmChatsFile, JSON.stringify(chats, null, 2));
+  } catch (error) {
+    console.error('Unable to save DM chats:', error);
+  }
+}
+
+function buildDmRecord(message, direction, userTagOverride = null) {
+  const attachments = message.attachments?.map((attachment) => ({
+    id: attachment.id,
+    name: attachment.name,
+    url: attachment.url,
+    proxyURL: attachment.proxyURL,
+    contentType: attachment.contentType,
+    width: attachment.width,
+    height: attachment.height,
+    size: attachment.size
+  })) || [];
+  const stickers = message.stickers?.map((sticker) => ({
+    id: sticker.id,
+    name: sticker.name,
+    formatType: sticker.format?.toString?.() || sticker.formatType
+  })) || [];
+  return {
+    direction,
+    content: message.content || '',
+    timestamp: message.createdTimestamp || Date.now(),
+    userTag: userTagOverride || message.author?.tag || null,
+    attachments,
+    stickers,
+    mentions: message.mentions?.users?.map((user) => user.tag) || []
+  };
+}
+
+function recordDmMessage(userId, messageRecord) {
+  if (!userId || !messageRecord) return;
+  const chats = loadDmChats();
+  if (!chats[userId]) chats[userId] = [];
+  chats[userId].push(messageRecord);
+  saveDmChats(chats);
+}
+
+function getDmHistory(userId) {
+  if (!userId) return [];
+  const chats = loadDmChats();
+  return chats[userId] || [];
+}
+
+async function getGuilds() {
+  if (!client || !client.guilds) return [];
+  return client.guilds.cache.map((guild) => ({
+    id: guild.id,
+    name: guild.name,
+    memberCount: guild.memberCount || 0,
+    iconUrl: guild.iconURL({ size: 64, extension: 'png' })
+  }));
+}
+
+async function getGuildMembers(guildId) {
+  const guild = client.guilds.cache.get(guildId);
+  if (!guild) return [];
+  try {
+    await guild.members.fetch();
+  } catch (error) {
+    console.error('Failed to fetch guild members:', error);
+  }
+  return guild.members.cache.map((member) => ({
+    id: member.id,
+    username: member.user.username,
+    displayName: member.displayName || member.user.username,
+    discriminator: member.user.discriminator,
+    isBot: member.user.bot,
+    presence: member.presence?.status || 'offline'
+  }));
+}
+
+async function sendDirectMessage(userId, content) {
+  if (!userId || !content) throw new Error('Missing userId or content');
+  const user = await client.users.fetch(userId);
+  if (!user) throw new Error('User not found');
+  const dm = await user.createDM();
+  const message = await dm.send(content);
+  const record = buildDmRecord(message, 'outgoing', user.tag);
+  recordDmMessage(userId, record);
+  return message;
+}
+
+async function getDmUsers() {
+  const chats = loadDmChats();
+  const userIds = Object.keys(chats);
+  const users = [];
+  for (const userId of userIds) {
+    const cachedUser = client.users.cache.get(userId);
+    const user = cachedUser || await client.users.fetch(userId).catch(() => null);
+    users.push({
+      id: userId,
+      username: user?.username || null,
+      userTag: user?.tag || chats[userId][chats[userId].length - 1]?.userTag || userId,
+      presence: user?.presence?.status || 'offline',
+      messageCount: chats[userId].length,
+      lastMessage: chats[userId][chats[userId].length - 1]
+    });
+  }
+  return users;
+}
 
 function containsInvite(text) {
   if (!text) return false;
@@ -153,9 +279,19 @@ client.on('error', (err) => {
   console.error('Discord client error:', err);
 });
 
-client.on(Events.MessageCreate, moderateMessage);
+client.on(Events.MessageCreate, async (message) => {
+  if (message.author?.bot) return;
+  if (message.channel.type === ChannelType.DM) {
+    const record = buildDmRecord(message, 'incoming');
+    recordDmMessage(message.author.id, record);
+    return;
+  }
+  await moderateMessage(message);
+});
+
 client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
   if (newMessage.partial) return;
+  if (newMessage.channel.type === ChannelType.DM) return;
   moderateMessage(newMessage);
 });
 
@@ -209,12 +345,16 @@ async function startBot() {
 function applyPresence(status) {
   const allowedStatuses = ['online', 'idle', 'dnd'];
   if (!allowedStatuses.includes(status)) {
+    console.warn(`Invalid presence status: ${status}`);
     return;
   }
   desiredPresence = status;
   if (client.user && client.user.setPresence) {
-    client.user.setPresence({ activities: [{ name: 'Moderation active' }], status });
-    console.log(`Bot presence set to ${status}.`);
+    client.user.setPresence({ activities: [{ name: 'Moderation active' }], status })
+      .then(() => console.log(`Bot presence set to ${status}.`))
+      .catch(err => console.error('Failed to set bot presence:', err));
+  } else {
+    console.warn('Bot client is not ready to set presence yet. Desired presence saved for later.');
   }
 }
 
@@ -223,14 +363,35 @@ function setBotPresence(status) {
   applyPresence(status);
 }
 
+async function getDmUsers() {
+  const chats = loadDmChats();
+  const userIds = Object.keys(chats);
+  const users = [];
+  for (const userId of userIds) {
+    const cachedUser = client.users.cache.get(userId);
+    const user = cachedUser || await client.users.fetch(userId).catch(() => null);
+    users.push({
+      id: userId,
+      username: user?.username || null,
+      userTag: user?.tag || chats[userId][chats[userId].length - 1]?.userTag || userId,
+      presence: user?.presence?.status || 'offline',
+      messageCount: chats[userId].length,
+      lastMessage: chats[userId][chats[userId].length - 1]
+    });
+  }
+  return users;
+}
+
 function getStatus() {
+  const presence = botClient?.user?.presence?.status || desiredPresence || 'offline';
   return {
     connected,
     user: botClient?.user ? `${botClient.user.tag}` : null,
+    presence,
     lastError,
     lastAttempt,
     loginAttempts
   };
 }
 
-module.exports = { startBot, getStatus, setBotPresence };
+module.exports = { startBot, getStatus, setBotPresence, getGuilds, getGuildMembers, getDmHistory, sendDirectMessage, getDmUsers };
