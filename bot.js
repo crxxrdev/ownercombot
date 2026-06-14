@@ -295,20 +295,38 @@ client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
   moderateMessage(newMessage);
 });
 
+function waitForClientReady(timeoutMs = 15000) {
+  if (client.isReady && client.isReady()) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      client.off(Events.ClientReady, onReady);
+      reject(new Error('Discord client did not become ready in time'));
+    }, timeoutMs);
+
+    const onReady = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+
+    client.once(Events.ClientReady, onReady);
+  });
+}
+
 async function startBot() {
   if (!hasToken) {
     console.log('Skipping Discord bot startup because DISCORD_TOKEN is not configured.');
     return null;
   }
 
-  if (client.isReady()) {
+  if (client.isReady && client.isReady()) {
     botClient = client;
     connected = true;
-    applyPresence(desiredPresence);
+    await applyPresence(desiredPresence);
     return client;
   }
 
-  // Attempt login with retries and exponential backoff
   const maxAttempts = 5;
   let delayMs = 1000;
   while (loginAttempts < maxAttempts && !connected) {
@@ -318,9 +336,11 @@ async function startBot() {
     try {
       await client.login(token);
       botClient = client;
-      connected = true;
       lastError = null;
-      console.log('Bot logged in successfully.');
+      console.log('Bot login succeeded, waiting for ready...');
+      await waitForClientReady();
+      connected = true;
+      console.log('Discord client is ready.');
       break;
     } catch (err) {
       lastError = (err && err.message) ? err.message : String(err);
@@ -334,12 +354,14 @@ async function startBot() {
 
   if (!connected) {
     console.error('Bot failed to connect after retries. Check DISCORD_TOKEN and network access.');
-  }
-  if (connected && botClient && botClient.user) {
-    applyPresence(desiredPresence);
+    return null;
   }
 
-  return connected ? client : null;
+  if (botClient && botClient.user) {
+    await applyPresence(desiredPresence);
+  }
+
+  return client;
 }
 
 async function applyPresence(status) {
@@ -364,9 +386,9 @@ async function applyPresence(status) {
   }
 }
 
-function setBotPresence(status) {
+async function setBotPresence(status) {
   desiredPresence = status;
-  applyPresence(status).catch(err => console.error('Failed to apply presence from settings call:', err));
+  await applyPresence(status);
 }
 
 async function getDmUsers() {

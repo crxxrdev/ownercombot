@@ -24,7 +24,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.post('/api/settings', (req, res) => {
+app.post('/api/settings', async (req, res) => {
   const { botEnabled, filterEnabled, adminBypass, botPresence } = req.body;
   if (typeof botEnabled === 'boolean') {
     settings.set('botEnabled', botEnabled);
@@ -37,9 +37,9 @@ app.post('/api/settings', (req, res) => {
   }
   if (typeof botPresence === 'string') {
     settings.set('botPresence', botPresence);
-    setBotPresence(botPresence);
+    await setBotPresence(botPresence);
   }
-  return res.json({ settings: settings.getSettings() });
+  return res.json({ settings: settings.getSettings(), bot: getStatus() });
 });
 
 app.get('/api/guilds', async (req, res) => {
